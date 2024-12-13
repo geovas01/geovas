@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+.knitr .inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.rimage .left {
+  text-align: left;
+}
+.rimage .right {
+  text-align: right;
+}
+.rimage .center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<meta charset='utf-8'>
+<title>Κυρτά Τετράπλευρα</title>
+</head>
+<body>
+<div id="ranches"></div>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+<script>
+
+var width = 600;
+var height = 600;
+
+var time_to_draw = 280;
+var total_time = 0;
+var convex_ct = 0;
+var nonconvex_ct = 0;
+
+var randomPoint = function(quadrant) {
+    var minX = 0;
+    var minY = 0;
+    if (quadrant % 2 !== 0) {
+        minX = width / 2;
+    }
+    if (quadrant > 2) {
+        minY = height / 2;
+    }
+    return {
+        x: Math.random() * width / 2 + minX,
+        y: Math.random() * height / 2 + minY
+    }
+
+}
+
+var isConvex = function(points) {
+    var p = [...points]
+    p.push(p[1])
+    for (var i = 0; i < points.length - 1; i++){
+        var dx1 = p[i + 1].x - p[i].x
+        var dy1 = p[i + 1].y - p[i].y
+        var dx2 = p[i + 2].x - p[i + 1].x
+        var dy2 = p[i + 2].y - p[i + 1].y
+        if (dx1 * dy2 - dy1 * dx2 < 0) {
+            return false
+        }
+    }
+    return true
+}
+
+var square_color = 'blue'
+
+var svg = d3.select('#ranches').append('svg')
+    .attr('width', width + 200)
+    .attr('height', height)
+
+svg.append('rect')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('width', width)
+    .attr('height', height)
+    .attr('stroke', square_color)
+    .attr('fill', 'transparent')
+
+svg.append('line')
+    .attr('x1', width / 2)
+    .attr('y1', 0)
+    .attr('x2', width / 2)
+    .attr('y2', height)
+    .attr('stroke', square_color)
+
+svg.append('line')
+    .attr('x1', 0)
+    .attr('y1', height / 2)
+    .attr('x2', width)
+    .attr('y2', height / 2)
+    .attr('stroke', square_color)
+
+var convexCount = svg.append('text')
+    .attr('x', width + 30)
+    .attr('y', 30)
+    .attr('fill', 'green')
+    .attr('font-size', 20)
+    // .classed('dataChoose', true)
+    .text(function(d) { return "Convex: 0" })
+
+var nonconvexCount = svg.append('text')
+    .attr('x', width + 30)
+    .attr('y', 60)
+    .attr('fill', 'red')
+    .attr('font-size', 20)
+
+    // .classed('dataChoose', true)
+    .text("Non-convex: 0")
+
+var probConvex = svg.append('text')
+    .attr('x', width + 30)
+    .attr('y', 90)
+    .attr('font-size', 20)
+    .attr('fill', 'blue')
+    // .classed('dataChoose', true)
+    .text("Probability: ")
+
+var line = d3.svg.line()
+    .interpolate('linear')
+    .x(function(d) { return d.x; })
+    .y(function(d) { return d.y; })
+
+for (var i = 0; i < 1000; i++){
+    var points = [2, 1, 3, 4].map(randomPoint)
+    points.push(points[0])
+
+    var path = svg.append('path')
+        .attr('d', line(points))
+            .attr("stroke", 'black')
+            .attr("stroke-width", "2")
+            .attr("fill", "none");
+
+    var totalLength = path.node().getTotalLength();
+
+    path.attr("stroke-dasharray", totalLength + " " + totalLength)
+      .attr("stroke-dashoffset", totalLength)
+      .transition()
+        .delay(total_time)
+        .duration(time_to_draw)
+        .ease("linear")
+        .attr("stroke-dashoffset", 0);
+
+    var convex = isConvex(points);
+
+    if (convex) {
+        convex_ct += 1;
+        convexCount.transition()
+            .delay(total_time + time_to_draw)
+            .duration(time_to_draw)
+            .text(`Convex: ${convex_ct}`)
+    }
+    else {
+        nonconvex_ct += 1;
+        nonconvexCount.transition()
+            .delay(total_time + time_to_draw)
+            .duration(time_to_draw)
+            .text(`Non-convex: ${nonconvex_ct}`)
+    }
+
+    probConvex.transition()
+        .delay(total_time + time_to_draw)
+        .duration(time_to_draw)
+        .text(`Probability: ${(convex_ct / (convex_ct + nonconvex_ct)).toFixed(3)}`)
+
+    path.transition()
+        .delay(total_time + time_to_draw)
+        .duration(time_to_draw)
+        .attr('stroke', convex ? 'green' : 'red')
+        .attr('opacity', 1)
+
+    path.transition()
+        .delay(total_time + time_to_draw + time_to_draw)
+        .duration(time_to_draw)
+        .attr('opacity', .1)
+
+
+    total_time += time_to_draw;
+}
+
+</script>
+</body>
